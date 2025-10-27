@@ -1,16 +1,19 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/pablopasquim/GoPizza/internal/models"
-	"github.com/pablopasquim/GoPizza/internal/data"
 )
 
+var pizzas = []models.Pizza{} // Sample pizza data
+
 func GetPizza(c *gin.Context) { // Handler function to get pizzas
-	pizzas := data.Pizzas
 	c.JSON(200, gin.H{ // Return the list of pizzas
 		"pizzas": pizzas,
 	})
@@ -26,7 +29,7 @@ func GetPizzaID(c *gin.Context) {
 		return
 	}
 
-	for _, pizza := range data.Pizzas { // Search for pizza by ID
+	for _, pizza := range pizzas { // Search for pizza by ID
 		if pizza.ID == id { // If found
 			c.JSON(200, gin.H{ // Return the found pizza
 				"pizza": pizza,
@@ -48,13 +51,39 @@ func PostPizza(c *gin.Context) {
 			}) // Handle binding error
 		return
 	}
-
+	newPizza.ID = len(pizzas) + 1 // Assign a new ID
+	pizzas = append(pizzas, newPizza) // Add new pizza to the list
+	savePizza()	// Save the updated pizza list
 	c.JSON(201, gin.H{ // Return success response
 		"message": "Pizza created successfully", // Success message
 		"pizza": newPizza,
 		})// Return the created pizza
+}
 
-		data.Pizzas = append(data.Pizzas, newPizza)
+func loadPizzas() {
+	file, err := os.Open("dados/pizza.json")
+	if err != nil {
+		fmt.Println("Error file:", err)
+		return
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&pizzas); err != nil {
+		fmt.Println("Error decoding JSON: ", err)
+	}
+}
+
+func savePizza() {
+	file, err := os.Create("dados/pizza.json")
+	if err != nil {
+		fmt.Println("Error file:", err)
+		return
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	if err := encoder.Encode(pizzas); err != nil {
+		fmt.Println("Error encoding JSON:", err)
+	}
 }
 
 func PutPizza(c *gin.Context) {
@@ -74,7 +103,7 @@ func PutPizza(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	updatedPizza.ID = id // Ensure the ID remains unchanged
 	c.JSON(200, gin.H{ // Return success response
 		"message": "Pizza updated successfully", // Success message
